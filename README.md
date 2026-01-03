@@ -1,6 +1,6 @@
 # To-Do List Application
 
-A simple to-do list app built with Flask and SQLite.
+A simple to-do list app built with Flask and PostgreSQL (SQLite for local development).
 
 ## Quick Start
 
@@ -49,4 +49,4 @@ To-Do List/
 
 Your app will be live at `https://todo-list-xxxx.onrender.com`
 
-> **Note:** The free tier spins down after inactivity. First request after idle may take ~30 seconds.
+> **Note:** The free tier spins down after inactivity. First request after idle may take ~30 seconds. The free PostgreSQL database expires after 90 days.
