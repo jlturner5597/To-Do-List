@@ -72,7 +72,13 @@ def index():
 
 def row_to_dict(row, columns):
     """Convert a database row to a dictionary."""
-    return dict(zip(columns, row))
+    result = dict(zip(columns, row))
+    # Convert date/datetime objects to ISO format strings for consistent JSON serialization
+    # PostgreSQL returns datetime.date objects, while SQLite returns strings
+    for key in ['deadline', 'created_at']:
+        if result.get(key) and hasattr(result[key], 'isoformat'):
+            result[key] = result[key].isoformat()
+    return result
 
 
 @app.route('/api/todos', methods=['GET'])
