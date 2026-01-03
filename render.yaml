@@ -5,6 +5,7 @@ databases:
 services:
   - type: web
     name: todo-list
+    plan: free
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
