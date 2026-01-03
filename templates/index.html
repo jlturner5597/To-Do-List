@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>To-Do List</h1>
+        </header>
+
+        <main class="main">
+            <div class="card">
+                <form id="todo-form" class="add-form">
+                    <input 
+                        type="text" 
+                        id="todo-input" 
+                        placeholder="What needs to be done?" 
+                        autocomplete="off"
+                    >
+                    <input 
+                        type="date" 
+                        id="deadline-input"
+                        title="Set deadline (optional)"
+                    >
+                    <button type="submit">Add</button>
+                </form>
+
+                <ul id="todo-list" class="todo-list">
+                    <!-- To-do items will be inserted here -->
+                </ul>
+
+                <div id="empty-state" class="empty-state">
+                    <p>No tasks yet. Add one above!</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const form = document.getElementById('todo-form');
+        const input = document.getElementById('todo-input');
+        const deadlineInput = document.getElementById('deadline-input');
+        const todoList = document.getElementById('todo-list');
+        const emptyState = document.getElementById('empty-state');
+
+        // Load todos on page load
+        document.addEventListener('DOMContentLoaded', loadTodos);
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+
+            const deadline = deadlineInput.value || null;
+
+            try {
+                const response = await fetch('/api/todos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, deadline })
+                });
+
+                if (response.ok) {
+                    input.value = '';
+                    deadlineInput.value = '';
+                    loadTodos();
+                }
+            } catch (error) {
+                console.error('Error adding todo:', error);
+            }
+        });
+
+        // Format date as readable string (e.g., "Jan 15")
+        function formatDate(dateString) {
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        // Load all todos from the API
+        async function loadTodos() {
+            try {
+                const response = await fetch('/api/todos');
+                const todos = await response.json();
+                renderTodos(todos);
+            } catch (error) {
+                console.error('Error loading todos:', error);
+            }
+        }
+
+        // Render todos to the page
+        function renderTodos(todos) {
+            todoList.innerHTML = '';
+
+            if (todos.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = 'todo-item' + (todo.completed ? ' completed' : '');
+                li.dataset.id = todo.id;
+
+                // Check if overdue
+                if (todo.deadline && !todo.completed) {
+                    const today = new Date().toISOString().split('T')[0];
+                    if (todo.deadline < today) {
+                        li.classList.add('overdue');
+                    }
+                }
+
+                const checkbox = document.createElement('span');
+                checkbox.className = 'checkbox';
+                checkbox.innerHTML = todo.completed ? '✓' : '';
+                checkbox.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleTodo(todo.id);
+                });
+
+                const text = document.createElement('span');
+                text.className = 'todo-text';
+                text.textContent = todo.text;
+
+                li.appendChild(checkbox);
+                li.appendChild(text);
+
+                // Add deadline display if set
+                if (todo.deadline) {
+                    const deadlineSpan = document.createElement('span');
+                    deadlineSpan.className = 'todo-deadline';
+                    deadlineSpan.textContent = formatDate(todo.deadline);
+                    li.appendChild(deadlineSpan);
+                }
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.innerHTML = '×';
+                deleteBtn.title = 'Delete';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteTodo(todo.id);
+                });
+
+                li.appendChild(deleteBtn);
+
+                todoList.appendChild(li);
+            });
+        }
+
+        // Toggle todo completion status
+        async function toggleTodo(id) {
+            try {
+                const response = await fetch(`/api/todos/${id}`, {
+                    method: 'PUT'
+                });
+
+                if (response.ok) {
+                    loadTodos();
+                }
+            } catch (error) {
+                console.error('Error toggling todo:', error);
+            }
+        }
+
+        // Delete a todo
+        async function deleteTodo(id) {
+            try {
+                const response = await fetch(`/api/todos/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadTodos();
+                }
+            } catch (error) {
+                console.error('Error deleting todo:', error);
+            }
+        }
+    </script>
+</body>
+</html>
