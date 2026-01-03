@@ -3,12 +3,15 @@ Simple To-Do List Application
 Flask backend with SQLite database
 """
 
+import os
 from flask import Flask, render_template, request, jsonify
 import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
-DATABASE = 'database.db'
+
+# Use environment variable for database path, with fallback for local development
+DATABASE = os.environ.get('DATABASE_PATH', 'database.db')
 
 
 def get_db():
@@ -117,6 +120,9 @@ def delete_todo(todo_id):
     return jsonify({'success': True})
 
 
+# Initialize database on module load (needed for gunicorn)
+init_db()
+
 if __name__ == '__main__':
-    init_db()
+    # Local development only
     app.run(debug=True)
