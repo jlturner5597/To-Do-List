@@ -83,6 +83,7 @@ body.dark .description-input {
     border-color: var(--border);
 }
 
+body.dark .description-editor-container,
 body.dark .notes-editor-container {
     background: var(--card);
 }
@@ -136,6 +137,15 @@ body.dark .ql-snow .ql-picker-label:hover .ql-fill {
     fill: var(--sp-cyan);
 }
 
+body.dark .gcal-btn.gcal-disconnect {
+    background: var(--border);
+}
+
+body.dark .gcal-btn.gcal-disconnect:hover {
+    background: #3b1c1c;
+    color: #f87171;
+}
+
 body.dark .ql-snow button.ql-active .ql-stroke {
     stroke: var(--sp-cyan);
 }
@@ -174,9 +184,120 @@ body {
 .header-row {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     gap: 12px;
     position: relative;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-info {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+}
+
+.logout-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+/* Flash Messages */
+.flash-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 400px;
+}
+
+.flash-message {
+    padding: 12px 40px 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    position: relative;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.flash-close {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    opacity: 0.7;
+}
+
+.flash-close:hover {
+    opacity: 1;
+}
+
+.flash-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.flash-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.flash-info {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+body.dark .flash-success {
+    background: #052e16;
+    color: #86efac;
+    border-color: #166534;
+}
+
+body.dark .flash-error {
+    background: #450a0a;
+    color: #fca5a5;
+    border-color: #7f1d1d;
+}
+
+body.dark .flash-info {
+    background: #1e3a5f;
+    color: #93c5fd;
+    border-color: #1e40af;
 }
 
 .header h1 {
@@ -219,7 +340,7 @@ body {
 }
 
 .settings-panel.open {
-    max-height: 200px;
+    max-height: 350px;
     margin-top: 16px;
     border: 1px solid var(--border);
 }
@@ -285,6 +406,109 @@ body {
 
 .toggle-switch input:checked + .toggle-slider {
     background-color: var(--sp-cyan);
+}
+
+/* Settings Divider */
+.settings-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+}
+
+/* Google Calendar Settings */
+.google-calendar-setting {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.setting-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.google-calendar-icon {
+    color: var(--sp-cyan);
+}
+
+.google-calendar-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-indicator.connected {
+    background-color: var(--success);
+}
+
+.status-indicator.disconnected {
+    background-color: var(--muted);
+}
+
+.status-indicator.not-configured {
+    background-color: #f59e0b;
+}
+
+.status-indicator.error {
+    background-color: var(--danger);
+}
+
+.status-text {
+    color: var(--muted);
+}
+
+.google-calendar-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.gcal-btn {
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.gcal-btn.gcal-connect {
+    background: var(--sp-cyan);
+    color: white;
+}
+
+.gcal-btn.gcal-connect:hover {
+    background: var(--sp-dark-cyan);
+}
+
+.gcal-btn.gcal-disconnect {
+    background: var(--border);
+    color: var(--text);
+}
+
+.gcal-btn.gcal-disconnect:hover {
+    background: #fee2e2;
+    color: var(--danger);
+}
+
+.gcal-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.gcal-notice {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0;
+    font-style: italic;
 }
 
 .toggle-switch input:checked + .toggle-slider::before {
@@ -504,12 +728,14 @@ body {
 }
 
 /* Notes Editor Container */
+.description-editor-container,
 .notes-editor-container {
     background: var(--card);
     border-radius: 6px;
     overflow: hidden;
 }
 
+.description-editor,
 .notes-editor {
     min-height: 120px;
 }
@@ -544,6 +770,27 @@ body {
 
 .save-details-btn.saved {
     background: var(--success);
+}
+
+/* Editor Error State */
+.editor-error {
+    padding: 20px;
+    text-align: center;
+    color: var(--danger);
+    background: #fef2f2;
+    border-radius: 6px;
+    border: 1px solid #fecaca;
+}
+
+.editor-error p {
+    margin: 0;
+    font-size: 14px;
+}
+
+body.dark .editor-error {
+    background: #450a0a;
+    border-color: #7f1d1d;
+    color: #fca5a5;
 }
 
 .checkbox {

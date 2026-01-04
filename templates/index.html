@@ -7,18 +7,44 @@
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- DOMPurify for XSS protection -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js" integrity="sha384-irShVGbS5pg+p2c/R5P8Ix7BM8WOHWlb3BbL4T1DKLY7x9BfjMb5HGUpKxSx/6V9" crossorigin="anonymous"></script>
 </head>
 <body>
+    <!-- Flash messages for user notifications -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-container">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}" onclick="this.remove()">
+                        {{ message }}
+                        <span class="flash-close">&times;</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
     <div class="container">
         <header class="header">
             <div class="header-row">
                 <h1>To-Do List</h1>
-                <button id="settings-btn" class="settings-btn" title="Settings" aria-label="Toggle settings">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="10" cy="10" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" transform="scale(0.83) translate(0, 0)"/>
-                    </svg>
-                </button>
+                <div class="header-actions">
+                    <span class="user-info">{{ current_user.username }}</span>
+                    <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Logout">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </a>
+                    <button id="settings-btn" class="settings-btn" title="Settings" aria-label="Toggle settings">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="10" cy="10" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" transform="scale(0.83) translate(0, 0)"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div id="settings-panel" class="settings-panel">
                 <div class="settings-content">
@@ -36,6 +62,35 @@
                             <span class="toggle-slider"></span>
                         </label>
                     </label>
+                    
+                    <div class="settings-divider"></div>
+                    
+                    <div class="setting-item google-calendar-setting">
+                        <div class="setting-header">
+                            <svg class="google-calendar-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            <span class="setting-label">Google Calendar</span>
+                        </div>
+                        <div id="google-calendar-status" class="google-calendar-status">
+                            <span class="status-indicator" id="gcal-status-indicator"></span>
+                            <span class="status-text" id="gcal-status-text">Checking...</span>
+                        </div>
+                        <div id="google-calendar-actions" class="google-calendar-actions">
+                            <button id="gcal-connect-btn" class="gcal-btn gcal-connect" style="display: none;">
+                                Connect
+                            </button>
+                            <button id="gcal-disconnect-btn" class="gcal-btn gcal-disconnect" style="display: none;">
+                                Disconnect
+                            </button>
+                        </div>
+                        <p id="gcal-not-configured" class="gcal-notice" style="display: none;">
+                            Configure Google API credentials to enable sync.
+                        </p>
+                    </div>
                 </div>
             </div>
         </header>
@@ -76,7 +131,22 @@
     </div>
 
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
-    <script>
+    <script nonce="{{ csp_nonce() }}">
+        // CSRF token helper for secure requests
+        function getCsrfToken() {
+            const match = document.cookie.match(/csrf_token=([^;]+)/);
+            return match ? match[1] : '';
+        }
+
+        // Secure fetch wrapper that includes CSRF token
+        async function secureFetch(url, options = {}) {
+            const headers = options.headers || {};
+            if (options.method && options.method !== 'GET') {
+                headers['X-CSRFToken'] = getCsrfToken();
+            }
+            return fetch(url, { ...options, headers });
+        }
+
         const form = document.getElementById('todo-form');
         const input = document.getElementById('todo-input');
         const deadlineDateInput = document.getElementById('deadline-date-input');
@@ -90,10 +160,18 @@
         const darkModeToggle = document.getElementById('dark-mode-toggle');
         const showArchivedToggle = document.getElementById('show-archived-toggle');
 
+        // Google Calendar elements
+        const gcalStatusIndicator = document.getElementById('gcal-status-indicator');
+        const gcalStatusText = document.getElementById('gcal-status-text');
+        const gcalConnectBtn = document.getElementById('gcal-connect-btn');
+        const gcalDisconnectBtn = document.getElementById('gcal-disconnect-btn');
+        const gcalNotConfigured = document.getElementById('gcal-not-configured');
+
         // Load todos and settings on page load
         document.addEventListener('DOMContentLoaded', () => {
             loadDarkModePreference();
             loadShowArchivedPreference();
+            loadGoogleCalendarStatus();
             loadTodos();
         });
 
@@ -135,6 +213,64 @@
             showArchivedToggle.checked = showArchived;
         }
 
+        // Google Calendar status and connection handlers
+        async function loadGoogleCalendarStatus() {
+            try {
+                const response = await fetch('/api/google/status');
+                const status = await response.json();
+                
+                if (!status.configured) {
+                    gcalStatusIndicator.className = 'status-indicator not-configured';
+                    gcalStatusText.textContent = 'Not configured';
+                    gcalNotConfigured.style.display = 'block';
+                    gcalConnectBtn.style.display = 'none';
+                    gcalDisconnectBtn.style.display = 'none';
+                } else if (status.connected) {
+                    gcalStatusIndicator.className = 'status-indicator connected';
+                    gcalStatusText.textContent = 'Connected';
+                    gcalNotConfigured.style.display = 'none';
+                    gcalConnectBtn.style.display = 'none';
+                    gcalDisconnectBtn.style.display = 'block';
+                } else {
+                    gcalStatusIndicator.className = 'status-indicator disconnected';
+                    gcalStatusText.textContent = 'Not connected';
+                    gcalNotConfigured.style.display = 'none';
+                    gcalConnectBtn.style.display = 'block';
+                    gcalDisconnectBtn.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error loading Google Calendar status:', error);
+                gcalStatusIndicator.className = 'status-indicator error';
+                gcalStatusText.textContent = 'Error';
+            }
+        }
+
+        // Connect to Google Calendar
+        gcalConnectBtn.addEventListener('click', () => {
+            window.location.href = '/api/google/auth';
+        });
+
+        // Disconnect from Google Calendar
+        gcalDisconnectBtn.addEventListener('click', async () => {
+            try {
+                gcalDisconnectBtn.disabled = true;
+                gcalDisconnectBtn.textContent = 'Disconnecting...';
+                
+                const response = await secureFetch('/api/google/disconnect', { method: 'POST' });
+                
+                if (response.ok) {
+                    loadGoogleCalendarStatus();
+                } else {
+                    console.error('Failed to disconnect');
+                }
+            } catch (error) {
+                console.error('Error disconnecting:', error);
+            } finally {
+                gcalDisconnectBtn.disabled = false;
+                gcalDisconnectBtn.textContent = 'Disconnect';
+            }
+        });
+
         // Combine date and time into ISO timestamp
         function combineDateTime(dateStr, timeStr) {
             if (!dateStr) return null;
@@ -153,7 +289,7 @@
             const deadline = combineDateTime(deadlineDateInput.value, deadlineTimeInput.value);
 
             try {
-                const response = await fetch('/api/todos', {
+                const response = await secureFetch('/api/todos', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text, deadline })
@@ -199,7 +335,8 @@
         async function loadTodos() {
             try {
                 // Clear Quill instances before reloading
-                quillInstances.clear();
+                descriptionQuillInstances.clear();
+                notesQuillInstances.clear();
                 
                 const includeArchived = showArchivedToggle.checked;
                 const url = includeArchived ? '/api/todos?include_archived=true' : '/api/todos';
@@ -307,7 +444,9 @@
                 detailPanel.innerHTML = `
                     <div class="detail-field">
                         <label>Description</label>
-                        <textarea class="description-input" placeholder="Add a description...">${todo.description || ''}</textarea>
+                        <div class="description-editor-container">
+                            <div class="description-editor"></div>
+                        </div>
                     </div>
                     <div class="detail-field">
                         <label>Notes</label>
@@ -319,6 +458,9 @@
                         <button class="save-details-btn">Save</button>
                     </div>
                 `;
+                // Store todo data for later initialization
+                detailPanel.dataset.description = todo.description || '';
+                detailPanel.dataset.notes = todo.notes || '';
 
                 li.appendChild(mainRow);
                 li.appendChild(detailPanel);
@@ -326,8 +468,20 @@
             });
         }
 
-        // Store Quill instances
-        const quillInstances = new Map();
+        // Store Quill instances (description and notes editors per todo)
+        const descriptionQuillInstances = new Map();
+        const notesQuillInstances = new Map();
+
+        // Quill toolbar configuration
+        const quillToolbarConfig = [
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            ['link'],
+            ['clean']
+        ];
+
+        // Check if Quill loaded successfully
+        const isQuillAvailable = typeof Quill !== 'undefined';
 
         // Toggle expand/collapse for task details
         function toggleExpand(container, todo) {
@@ -349,28 +503,61 @@
                 container.classList.add('expanded');
                 container.querySelector('.expand-btn').classList.add('rotated');
                 
-                // Initialize Quill if not already done
-                const editorContainer = container.querySelector('.notes-editor');
-                if (!quillInstances.has(todo.id)) {
-                    const quill = new Quill(editorContainer, {
-                        theme: 'snow',
-                        placeholder: 'Add notes with rich formatting...',
-                        modules: {
-                            toolbar: [
-                                ['bold', 'italic', 'underline', 'strike'],
-                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                ['link'],
-                                ['clean']
-                            ]
+                const detailPanel = container.querySelector('.todo-detail-panel');
+                
+                // Check if Quill is available
+                if (!isQuillAvailable) {
+                    console.error('Quill editor failed to load. Rich text editing is unavailable.');
+                    detailPanel.innerHTML = `
+                        <div class="editor-error">
+                            <p>Rich text editor failed to load. Please refresh the page or check your internet connection.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Initialize Description Quill editor if not already done
+                if (!descriptionQuillInstances.has(todo.id)) {
+                    try {
+                        const descEditor = container.querySelector('.description-editor');
+                        const descQuill = new Quill(descEditor, {
+                            theme: 'snow',
+                            placeholder: 'Add a description...',
+                            modules: { toolbar: quillToolbarConfig }
+                        });
+                        
+                        // Set initial content (sanitized for XSS protection)
+                        const descContent = detailPanel.dataset.description;
+                        if (descContent) {
+                            descQuill.root.innerHTML = DOMPurify.sanitize(descContent);
                         }
-                    });
-                    
-                    // Set initial content
-                    if (todo.notes) {
-                        quill.root.innerHTML = todo.notes;
+                        
+                        descriptionQuillInstances.set(todo.id, descQuill);
+                    } catch (error) {
+                        console.error('Failed to initialize description editor:', error);
                     }
-                    
-                    quillInstances.set(todo.id, quill);
+                }
+                
+                // Initialize Notes Quill editor if not already done
+                if (!notesQuillInstances.has(todo.id)) {
+                    try {
+                        const notesEditor = container.querySelector('.notes-editor');
+                        const notesQuill = new Quill(notesEditor, {
+                            theme: 'snow',
+                            placeholder: 'Add notes with rich formatting...',
+                            modules: { toolbar: quillToolbarConfig }
+                        });
+                        
+                        // Set initial content (sanitized for XSS protection)
+                        const notesContent = detailPanel.dataset.notes;
+                        if (notesContent) {
+                            notesQuill.root.innerHTML = DOMPurify.sanitize(notesContent);
+                        }
+                        
+                        notesQuillInstances.set(todo.id, notesQuill);
+                    } catch (error) {
+                        console.error('Failed to initialize notes editor:', error);
+                    }
                 }
                 
                 // Setup save button
@@ -381,15 +568,18 @@
 
         // Save task details
         async function saveDetails(container, todoId) {
-            const description = container.querySelector('.description-input').value.trim();
-            const quill = quillInstances.get(todoId);
-            const notes = quill ? quill.root.innerHTML : '';
+            // Get description from Quill editor
+            const descQuill = descriptionQuillInstances.get(todoId);
+            const descriptionHtml = descQuill ? descQuill.root.innerHTML : '';
+            const description = descriptionHtml === '<p><br></p>' ? '' : descriptionHtml;
             
-            // Don't save empty Quill content
-            const notesContent = notes === '<p><br></p>' ? '' : notes;
+            // Get notes from Quill editor
+            const notesQuill = notesQuillInstances.get(todoId);
+            const notesHtml = notesQuill ? notesQuill.root.innerHTML : '';
+            const notesContent = notesHtml === '<p><br></p>' ? '' : notesHtml;
             
             try {
-                const response = await fetch(`/api/todos/${todoId}`, {
+                const response = await secureFetch(`/api/todos/${todoId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ description, notes: notesContent })
@@ -417,7 +607,7 @@
         // Toggle todo completion status
         async function toggleTodo(id) {
             try {
-                const response = await fetch(`/api/todos/${id}`, {
+                const response = await secureFetch(`/api/todos/${id}`, {
                     method: 'PUT'
                 });
 
@@ -432,7 +622,7 @@
         // Delete a todo
         async function deleteTodo(id) {
             try {
-                const response = await fetch(`/api/todos/${id}`, {
+                const response = await secureFetch(`/api/todos/${id}`, {
                     method: 'DELETE'
                 });
 
@@ -447,7 +637,7 @@
         // Toggle archive status
         async function toggleArchive(id, archived) {
             try {
-                const response = await fetch(`/api/todos/${id}`, {
+                const response = await secureFetch(`/api/todos/${id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ archived })

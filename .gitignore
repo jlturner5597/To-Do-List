@@ -1,0 +1,176 @@
+# ============================================================================
+# SENSITIVE FILES - NEVER COMMIT
+# ============================================================================
+
+# SQLite database (contains user credentials, OAuth tokens, personal data)
+database.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables (secrets, API keys, credentials)
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+*.env
+
+# Google OAuth credentials files
+credentials.json
+token.json
+client_secret*.json
+
+# ============================================================================
+# PYTHON
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+.virtualenv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# ============================================================================
+# IDE / EDITOR
+# ============================================================================
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm / JetBrains
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Cursor
+.cursor/
+
+# ============================================================================
+# OS FILES
+# ============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.Trash-*
+
+# ============================================================================
+# LOGS & TEMP FILES
+# ============================================================================
+
+# Log files
+*.log
+logs/
+log/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+.tmp/
+temp/
+
+# Flask session files
+flask_session/
+
+# ============================================================================
+# SECURITY / KEYS
+# ============================================================================
+
+# Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Secrets
+secrets.yaml
+secrets.json
+*.secret
+
+# ============================================================================
+# MISC
+# ============================================================================
+
+# Node modules (if any frontend tooling is added)
+node_modules/
+
+# Local development overrides
+local_settings.py
