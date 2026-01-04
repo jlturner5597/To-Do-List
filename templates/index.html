@@ -29,6 +29,13 @@
                             <span class="toggle-slider"></span>
                         </label>
                     </label>
+                    <label class="setting-item">
+                        <span class="setting-label">Show Archived</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="show-archived-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </label>
                 </div>
             </div>
         </header>
@@ -81,11 +88,13 @@
         const settingsBtn = document.getElementById('settings-btn');
         const settingsPanel = document.getElementById('settings-panel');
         const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const showArchivedToggle = document.getElementById('show-archived-toggle');
 
         // Load todos and settings on page load
         document.addEventListener('DOMContentLoaded', () => {
-            loadTodos();
             loadDarkModePreference();
+            loadShowArchivedPreference();
+            loadTodos();
         });
 
         // Toggle settings panel
@@ -112,6 +121,18 @@
             const darkMode = localStorage.getItem('darkMode') === 'true';
             darkModeToggle.checked = darkMode;
             document.body.classList.toggle('dark', darkMode);
+        }
+
+        // Show archived toggle handler
+        showArchivedToggle.addEventListener('change', () => {
+            localStorage.setItem('showArchived', showArchivedToggle.checked ? 'true' : 'false');
+            loadTodos();
+        });
+
+        // Load show archived preference from localStorage
+        function loadShowArchivedPreference() {
+            const showArchived = localStorage.getItem('showArchived') === 'true';
+            showArchivedToggle.checked = showArchived;
         }
 
         // Combine date and time into ISO timestamp
@@ -180,7 +201,9 @@
                 // Clear Quill instances before reloading
                 quillInstances.clear();
                 
-                const response = await fetch('/api/todos');
+                const includeArchived = showArchivedToggle.checked;
+                const url = includeArchived ? '/api/todos?include_archived=true' : '/api/todos';
+                const response = await fetch(url);
                 const todos = await response.json();
                 renderTodos(todos);
             } catch (error) {
@@ -206,10 +229,10 @@
 
                 // Main row
                 const mainRow = document.createElement('div');
-                mainRow.className = 'todo-item' + (todo.completed ? ' completed' : '');
+                mainRow.className = 'todo-item' + (todo.completed ? ' completed' : '') + (todo.archived ? ' archived' : '');
 
                 // Check if overdue
-                if (todo.deadline && !todo.completed && isOverdue(todo.deadline)) {
+                if (todo.deadline && !todo.completed && !todo.archived && isOverdue(todo.deadline)) {
                     mainRow.classList.add('overdue');
                 }
 
@@ -255,6 +278,17 @@
                     mainRow.appendChild(deadlineSpan);
                 }
 
+                const archiveBtn = document.createElement('button');
+                archiveBtn.className = 'archive-btn';
+                archiveBtn.innerHTML = todo.archived 
+                    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>'
+                    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>';
+                archiveBtn.title = todo.archived ? 'Unarchive' : 'Archive';
+                archiveBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleArchive(todo.id, !todo.archived);
+                });
+
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
                 deleteBtn.innerHTML = '×';
@@ -264,6 +298,7 @@
                     deleteTodo(todo.id);
                 });
 
+                mainRow.appendChild(archiveBtn);
                 mainRow.appendChild(deleteBtn);
 
                 // Detail panel (hidden by default)
@@ -406,6 +441,23 @@
                 }
             } catch (error) {
                 console.error('Error deleting todo:', error);
+            }
+        }
+
+        // Toggle archive status
+        async function toggleArchive(id, archived) {
+            try {
+                const response = await fetch(`/api/todos/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ archived })
+                });
+
+                if (response.ok) {
+                    loadTodos();
+                }
+            } catch (error) {
+                console.error('Error archiving todo:', error);
             }
         }
     </script>

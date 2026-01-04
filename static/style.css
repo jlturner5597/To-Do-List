@@ -69,6 +69,10 @@ body.dark .delete-btn:hover {
     background: #3b1c1c;
 }
 
+body.dark .archive-btn:hover {
+    background: var(--sp-light-cyan);
+}
+
 /* Dark mode for detail panel */
 body.dark .todo-detail-panel {
     background: var(--sp-very-light-cyan);
@@ -228,6 +232,10 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+
+.setting-item + .setting-item {
+    margin-top: 16px;
 }
 
 .setting-label {
@@ -603,6 +611,46 @@ body {
     color: var(--muted);
 }
 
+/* Archive Button */
+.archive-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 6px;
+    opacity: 0;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.todo-item:hover .archive-btn {
+    opacity: 1;
+}
+
+.archive-btn:hover {
+    background: var(--sp-very-light-cyan);
+    color: var(--sp-dark-cyan);
+}
+
+/* Archived task appearance */
+.todo-item.archived {
+    opacity: 0.6;
+}
+
+.todo-item.archived .todo-text {
+    font-style: italic;
+    color: var(--muted);
+}
+
+.todo-item.archived .archive-btn {
+    color: var(--sp-cyan);
+}
+
 /* Delete Button */
 .delete-btn {
     width: 28px;
@@ -680,8 +728,9 @@ body {
         width: 100%;
     }
     
-    /* Always show delete button on touch devices */
-    .delete-btn {
+    /* Always show action buttons on touch devices */
+    .delete-btn,
+    .archive-btn {
         opacity: 1;
     }
     
