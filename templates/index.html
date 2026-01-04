@@ -10,7 +10,26 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>To-Do List</h1>
+            <div class="header-row">
+                <h1>To-Do List</h1>
+                <button id="settings-btn" class="settings-btn" title="Settings" aria-label="Toggle settings">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="10" cy="10" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" transform="scale(0.83) translate(0, 0)"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="settings-panel" class="settings-panel">
+                <div class="settings-content">
+                    <label class="setting-item">
+                        <span class="setting-label">Dark Mode</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="dark-mode-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </label>
+                </div>
+            </div>
         </header>
 
         <main class="main">
@@ -48,8 +67,42 @@
         const todoList = document.getElementById('todo-list');
         const emptyState = document.getElementById('empty-state');
 
-        // Load todos on page load
-        document.addEventListener('DOMContentLoaded', loadTodos);
+        // Settings elements
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+
+        // Load todos and settings on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTodos();
+            loadDarkModePreference();
+        });
+
+        // Toggle settings panel
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsPanel.classList.toggle('open');
+        });
+
+        // Close settings panel when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) {
+                settingsPanel.classList.remove('open');
+            }
+        });
+
+        // Dark mode toggle handler
+        darkModeToggle.addEventListener('change', () => {
+            document.body.classList.toggle('dark', darkModeToggle.checked);
+            localStorage.setItem('darkMode', darkModeToggle.checked ? 'true' : 'false');
+        });
+
+        // Load dark mode preference from localStorage
+        function loadDarkModePreference() {
+            const darkMode = localStorage.getItem('darkMode') === 'true';
+            darkModeToggle.checked = darkMode;
+            document.body.classList.toggle('dark', darkMode);
+        }
 
         // Handle form submission
         form.addEventListener('submit', async (e) => {
