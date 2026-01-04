@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>To-Do List</title>
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -41,11 +42,18 @@
                         placeholder="What needs to be done?" 
                         autocomplete="off"
                     >
-                    <input 
-                        type="date" 
-                        id="deadline-input"
-                        title="Set deadline (optional)"
-                    >
+                    <div class="datetime-inputs">
+                        <input 
+                            type="date" 
+                            id="deadline-date-input"
+                            title="Set deadline date (optional)"
+                        >
+                        <input 
+                            type="time" 
+                            id="deadline-time-input"
+                            title="Set deadline time (optional)"
+                        >
+                    </div>
                     <button type="submit">Add</button>
                 </form>
 
@@ -60,10 +68,12 @@
         </main>
     </div>
 
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
     <script>
         const form = document.getElementById('todo-form');
         const input = document.getElementById('todo-input');
-        const deadlineInput = document.getElementById('deadline-input');
+        const deadlineDateInput = document.getElementById('deadline-date-input');
+        const deadlineTimeInput = document.getElementById('deadline-time-input');
         const todoList = document.getElementById('todo-list');
         const emptyState = document.getElementById('empty-state');
 
@@ -104,13 +114,22 @@
             document.body.classList.toggle('dark', darkMode);
         }
 
+        // Combine date and time into ISO timestamp
+        function combineDateTime(dateStr, timeStr) {
+            if (!dateStr) return null;
+            if (timeStr) {
+                return `${dateStr}T${timeStr}:00`;
+            }
+            return `${dateStr}T00:00:00`;
+        }
+
         // Handle form submission
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = input.value.trim();
             if (!text) return;
 
-            const deadline = deadlineInput.value || null;
+            const deadline = combineDateTime(deadlineDateInput.value, deadlineTimeInput.value);
 
             try {
                 const response = await fetch('/api/todos', {
@@ -121,7 +140,8 @@
 
                 if (response.ok) {
                     input.value = '';
-                    deadlineInput.value = '';
+                    deadlineDateInput.value = '';
+                    deadlineTimeInput.value = '';
                     loadTodos();
                 }
             } catch (error) {
@@ -129,15 +149,37 @@
             }
         });
 
-        // Format date as readable string (e.g., "Jan 15")
-        function formatDate(dateString) {
-            const date = new Date(dateString + 'T00:00:00');
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        // Format datetime as readable string (e.g., "Jan 15" or "Jan 15, 2:30 PM")
+        function formatDeadline(deadlineString) {
+            if (!deadlineString) return '';
+            const date = new Date(deadlineString);
+            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            // Check if time is set (not midnight)
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            if (hours === 0 && minutes === 0) {
+                return dateStr;
+            }
+            
+            const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            return `${dateStr}, ${timeStr}`;
+        }
+
+        // Check if a deadline is overdue
+        function isOverdue(deadlineString) {
+            if (!deadlineString) return false;
+            const deadline = new Date(deadlineString);
+            const now = new Date();
+            return deadline < now;
         }
 
         // Load all todos from the API
         async function loadTodos() {
             try {
+                // Clear Quill instances before reloading
+                quillInstances.clear();
+                
                 const response = await fetch('/api/todos');
                 const todos = await response.json();
                 renderTodos(todos);
@@ -159,16 +201,27 @@
 
             todos.forEach(todo => {
                 const li = document.createElement('li');
-                li.className = 'todo-item' + (todo.completed ? ' completed' : '');
+                li.className = 'todo-item-container';
                 li.dataset.id = todo.id;
 
+                // Main row
+                const mainRow = document.createElement('div');
+                mainRow.className = 'todo-item' + (todo.completed ? ' completed' : '');
+
                 // Check if overdue
-                if (todo.deadline && !todo.completed) {
-                    const today = new Date().toISOString().split('T')[0];
-                    if (todo.deadline < today) {
-                        li.classList.add('overdue');
-                    }
+                if (todo.deadline && !todo.completed && isOverdue(todo.deadline)) {
+                    mainRow.classList.add('overdue');
                 }
+
+                // Expand button
+                const expandBtn = document.createElement('button');
+                expandBtn.className = 'expand-btn';
+                expandBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 6 8 10 12 6"></polyline></svg>';
+                expandBtn.title = 'Expand details';
+                expandBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleExpand(li, todo);
+                });
 
                 const checkbox = document.createElement('span');
                 checkbox.className = 'checkbox';
@@ -182,15 +235,24 @@
                 text.className = 'todo-text';
                 text.textContent = todo.text;
 
-                li.appendChild(checkbox);
-                li.appendChild(text);
+                // Indicator if has description or notes
+                if (todo.description || todo.notes) {
+                    const hasDetailsIndicator = document.createElement('span');
+                    hasDetailsIndicator.className = 'has-details-indicator';
+                    hasDetailsIndicator.title = 'Has details';
+                    text.appendChild(hasDetailsIndicator);
+                }
+
+                mainRow.appendChild(expandBtn);
+                mainRow.appendChild(checkbox);
+                mainRow.appendChild(text);
 
                 // Add deadline display if set
                 if (todo.deadline) {
                     const deadlineSpan = document.createElement('span');
                     deadlineSpan.className = 'todo-deadline';
-                    deadlineSpan.textContent = formatDate(todo.deadline);
-                    li.appendChild(deadlineSpan);
+                    deadlineSpan.textContent = formatDeadline(todo.deadline);
+                    mainRow.appendChild(deadlineSpan);
                 }
 
                 const deleteBtn = document.createElement('button');
@@ -202,10 +264,119 @@
                     deleteTodo(todo.id);
                 });
 
-                li.appendChild(deleteBtn);
+                mainRow.appendChild(deleteBtn);
 
+                // Detail panel (hidden by default)
+                const detailPanel = document.createElement('div');
+                detailPanel.className = 'todo-detail-panel';
+                detailPanel.innerHTML = `
+                    <div class="detail-field">
+                        <label>Description</label>
+                        <textarea class="description-input" placeholder="Add a description...">${todo.description || ''}</textarea>
+                    </div>
+                    <div class="detail-field">
+                        <label>Notes</label>
+                        <div class="notes-editor-container">
+                            <div class="notes-editor"></div>
+                        </div>
+                    </div>
+                    <div class="detail-actions">
+                        <button class="save-details-btn">Save</button>
+                    </div>
+                `;
+
+                li.appendChild(mainRow);
+                li.appendChild(detailPanel);
                 todoList.appendChild(li);
             });
+        }
+
+        // Store Quill instances
+        const quillInstances = new Map();
+
+        // Toggle expand/collapse for task details
+        function toggleExpand(container, todo) {
+            const isExpanded = container.classList.contains('expanded');
+            
+            // Collapse all other expanded items first
+            document.querySelectorAll('.todo-item-container.expanded').forEach(item => {
+                if (item !== container) {
+                    item.classList.remove('expanded');
+                    const expandBtn = item.querySelector('.expand-btn');
+                    if (expandBtn) expandBtn.classList.remove('rotated');
+                }
+            });
+
+            if (isExpanded) {
+                container.classList.remove('expanded');
+                container.querySelector('.expand-btn').classList.remove('rotated');
+            } else {
+                container.classList.add('expanded');
+                container.querySelector('.expand-btn').classList.add('rotated');
+                
+                // Initialize Quill if not already done
+                const editorContainer = container.querySelector('.notes-editor');
+                if (!quillInstances.has(todo.id)) {
+                    const quill = new Quill(editorContainer, {
+                        theme: 'snow',
+                        placeholder: 'Add notes with rich formatting...',
+                        modules: {
+                            toolbar: [
+                                ['bold', 'italic', 'underline', 'strike'],
+                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                ['link'],
+                                ['clean']
+                            ]
+                        }
+                    });
+                    
+                    // Set initial content
+                    if (todo.notes) {
+                        quill.root.innerHTML = todo.notes;
+                    }
+                    
+                    quillInstances.set(todo.id, quill);
+                }
+                
+                // Setup save button
+                const saveBtn = container.querySelector('.save-details-btn');
+                saveBtn.onclick = () => saveDetails(container, todo.id);
+            }
+        }
+
+        // Save task details
+        async function saveDetails(container, todoId) {
+            const description = container.querySelector('.description-input').value.trim();
+            const quill = quillInstances.get(todoId);
+            const notes = quill ? quill.root.innerHTML : '';
+            
+            // Don't save empty Quill content
+            const notesContent = notes === '<p><br></p>' ? '' : notes;
+            
+            try {
+                const response = await fetch(`/api/todos/${todoId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description, notes: notesContent })
+                });
+
+                if (response.ok) {
+                    // Show save confirmation
+                    const saveBtn = container.querySelector('.save-details-btn');
+                    const originalText = saveBtn.textContent;
+                    saveBtn.textContent = 'Saved!';
+                    saveBtn.classList.add('saved');
+                    setTimeout(() => {
+                        saveBtn.textContent = originalText;
+                        saveBtn.classList.remove('saved');
+                    }, 1500);
+                    
+                    // Reload to update the details indicator
+                    loadTodos();
+                }
+            } catch (error) {
+                console.error('Error saving details:', error);
+            }
         }
 
         // Toggle todo completion status

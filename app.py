@@ -40,23 +40,49 @@ def init_db():
                 id SERIAL PRIMARY KEY,
                 text TEXT NOT NULL,
                 completed BOOLEAN DEFAULT FALSE,
-                deadline DATE,
+                deadline TIMESTAMP,
+                description TEXT,
+                notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        # Add new columns if they don't exist (for existing PostgreSQL databases)
+        try:
+            cursor.execute('ALTER TABLE todos ADD COLUMN description TEXT')
+        except:
+            conn.rollback()
+        try:
+            cursor.execute('ALTER TABLE todos ADD COLUMN notes TEXT')
+        except:
+            conn.rollback()
+        # Migrate deadline from DATE to TIMESTAMP if needed
+        try:
+            cursor.execute('ALTER TABLE todos ALTER COLUMN deadline TYPE TIMESTAMP USING deadline::timestamp')
+        except:
+            conn.rollback()
     else:
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS todos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 text TEXT NOT NULL,
                 completed BOOLEAN DEFAULT 0,
-                deadline DATE,
+                deadline TIMESTAMP,
+                description TEXT,
+                notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        # Add deadline column if it doesn't exist (for existing SQLite databases)
+        # Add columns if they don't exist (for existing SQLite databases)
         try:
-            cursor.execute('ALTER TABLE todos ADD COLUMN deadline DATE')
+            cursor.execute('ALTER TABLE todos ADD COLUMN deadline TIMESTAMP')
+        except:
+            pass  # Column already exists
+        try:
+            cursor.execute('ALTER TABLE todos ADD COLUMN description TEXT')
+        except:
+            pass  # Column already exists
+        try:
+            cursor.execute('ALTER TABLE todos ADD COLUMN notes TEXT')
         except:
             pass  # Column already exists
     
@@ -86,8 +112,8 @@ def get_todos():
     """Get all to-do items."""
     conn, is_postgres = get_db()
     cursor = conn.cursor()
-    cursor.execute('SELECT id, text, completed, deadline, created_at FROM todos ORDER BY created_at DESC')
-    columns = ['id', 'text', 'completed', 'deadline', 'created_at']
+    cursor.execute('SELECT id, text, completed, deadline, description, notes, created_at FROM todos ORDER BY created_at DESC')
+    columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'created_at']
     todos = [row_to_dict(row, columns) for row in cursor.fetchall()]
     conn.close()
     return jsonify(todos)
@@ -98,25 +124,27 @@ def add_todo():
     """Add a new to-do item."""
     data = request.get_json()
     text = data.get('text', '').strip()
-    deadline = data.get('deadline') or None  # Optional deadline
+    deadline = data.get('deadline') or None  # Optional deadline (ISO timestamp)
+    description = data.get('description', '').strip() or None
+    notes = data.get('notes', '').strip() or None
     
     if not text:
         return jsonify({'error': 'Text is required'}), 400
     
     conn, is_postgres = get_db()
     cursor = conn.cursor()
-    columns = ['id', 'text', 'completed', 'deadline', 'created_at']
+    columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'created_at']
     
     if is_postgres:
         cursor.execute(
-            'INSERT INTO todos (text, deadline) VALUES (%s, %s) RETURNING id, text, completed, deadline, created_at',
-            (text, deadline)
+            'INSERT INTO todos (text, deadline, description, notes) VALUES (%s, %s, %s, %s) RETURNING id, text, completed, deadline, description, notes, created_at',
+            (text, deadline, description, notes)
         )
         todo = row_to_dict(cursor.fetchone(), columns)
     else:
-        cursor.execute('INSERT INTO todos (text, deadline) VALUES (?, ?)', (text, deadline))
+        cursor.execute('INSERT INTO todos (text, deadline, description, notes) VALUES (?, ?, ?, ?)', (text, deadline, description, notes))
         todo_id = cursor.lastrowid
-        cursor.execute('SELECT id, text, completed, deadline, created_at FROM todos WHERE id = ?', (todo_id,))
+        cursor.execute('SELECT id, text, completed, deadline, description, notes, created_at FROM todos WHERE id = ?', (todo_id,))
         todo = row_to_dict(cursor.fetchone(), columns)
     
     conn.commit()
@@ -130,10 +158,10 @@ def toggle_todo(todo_id):
     """Toggle the completion status of a to-do item."""
     conn, is_postgres = get_db()
     cursor = conn.cursor()
-    columns = ['id', 'text', 'completed', 'deadline', 'created_at']
+    columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'created_at']
     placeholder = '%s' if is_postgres else '?'
     
-    cursor.execute(f'SELECT id, text, completed, deadline, created_at FROM todos WHERE id = {placeholder}', (todo_id,))
+    cursor.execute(f'SELECT id, text, completed, deadline, description, notes, created_at FROM todos WHERE id = {placeholder}', (todo_id,))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -145,7 +173,58 @@ def toggle_todo(todo_id):
     cursor.execute(f'UPDATE todos SET completed = {placeholder} WHERE id = {placeholder}', (new_status, todo_id))
     conn.commit()
     
-    cursor.execute(f'SELECT id, text, completed, deadline, created_at FROM todos WHERE id = {placeholder}', (todo_id,))
+    cursor.execute(f'SELECT id, text, completed, deadline, description, notes, created_at FROM todos WHERE id = {placeholder}', (todo_id,))
+    updated_todo = row_to_dict(cursor.fetchone(), columns)
+    conn.close()
+    
+    return jsonify(updated_todo)
+
+
+@app.route('/api/todos/<int:todo_id>', methods=['PATCH'])
+def update_todo(todo_id):
+    """Update a to-do item's details (description, notes, deadline)."""
+    data = request.get_json()
+    conn, is_postgres = get_db()
+    cursor = conn.cursor()
+    columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'created_at']
+    placeholder = '%s' if is_postgres else '?'
+    
+    # Check if todo exists
+    cursor.execute(f'SELECT id FROM todos WHERE id = {placeholder}', (todo_id,))
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({'error': 'Todo not found'}), 404
+    
+    # Build dynamic update query based on provided fields
+    update_fields = []
+    values = []
+    
+    if 'description' in data:
+        update_fields.append(f'description = {placeholder}')
+        values.append(data['description'] or None)
+    
+    if 'notes' in data:
+        update_fields.append(f'notes = {placeholder}')
+        values.append(data['notes'] or None)
+    
+    if 'deadline' in data:
+        update_fields.append(f'deadline = {placeholder}')
+        values.append(data['deadline'] or None)
+    
+    if 'text' in data:
+        update_fields.append(f'text = {placeholder}')
+        values.append(data['text'].strip())
+    
+    if not update_fields:
+        conn.close()
+        return jsonify({'error': 'No fields to update'}), 400
+    
+    values.append(todo_id)
+    query = f"UPDATE todos SET {', '.join(update_fields)} WHERE id = {placeholder}"
+    cursor.execute(query, tuple(values))
+    conn.commit()
+    
+    cursor.execute(f'SELECT id, text, completed, deadline, description, notes, created_at FROM todos WHERE id = {placeholder}', (todo_id,))
     updated_todo = row_to_dict(cursor.fetchone(), columns)
     conn.close()
     

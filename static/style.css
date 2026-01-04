@@ -47,8 +47,14 @@ body.dark {
 }
 
 body.dark .add-form input[type="text"],
-body.dark .add-form input[type="date"] {
+body.dark .add-form input[type="date"],
+body.dark .add-form input[type="time"] {
     background: var(--card);
+}
+
+body.dark .add-form input[type="date"],
+body.dark .add-form input[type="time"] {
+    color-scheme: dark;
 }
 
 body.dark .checkbox {
@@ -61,6 +67,77 @@ body.dark .todo-item.overdue .todo-deadline {
 
 body.dark .delete-btn:hover {
     background: #3b1c1c;
+}
+
+/* Dark mode for detail panel */
+body.dark .todo-detail-panel {
+    background: var(--sp-very-light-cyan);
+}
+
+body.dark .description-input {
+    background: var(--card);
+    border-color: var(--border);
+}
+
+body.dark .notes-editor-container {
+    background: var(--card);
+}
+
+/* Dark mode Quill overrides */
+body.dark .ql-toolbar.ql-snow {
+    border-color: var(--border);
+    background: var(--sp-very-light-cyan);
+}
+
+body.dark .ql-container.ql-snow {
+    border-color: var(--border);
+}
+
+body.dark .ql-editor {
+    color: var(--text);
+}
+
+body.dark .ql-editor.ql-blank::before {
+    color: var(--muted);
+}
+
+body.dark .ql-snow .ql-stroke {
+    stroke: var(--muted);
+}
+
+body.dark .ql-snow .ql-fill {
+    fill: var(--muted);
+}
+
+body.dark .ql-snow .ql-picker {
+    color: var(--muted);
+}
+
+body.dark .ql-snow .ql-picker-options {
+    background: var(--card);
+    border-color: var(--border);
+}
+
+body.dark .ql-snow .ql-picker-item:hover {
+    color: var(--sp-cyan);
+}
+
+body.dark .ql-snow button:hover .ql-stroke,
+body.dark .ql-snow .ql-picker-label:hover .ql-stroke {
+    stroke: var(--sp-cyan);
+}
+
+body.dark .ql-snow button:hover .ql-fill,
+body.dark .ql-snow .ql-picker-label:hover .ql-fill {
+    fill: var(--sp-cyan);
+}
+
+body.dark .ql-snow button.ql-active .ql-stroke {
+    stroke: var(--sp-cyan);
+}
+
+body.dark .ql-snow button.ql-active .ql-fill {
+    fill: var(--sp-cyan);
 }
 
 * {
@@ -79,7 +156,7 @@ body {
 }
 
 .container {
-    max-width: 600px;
+    max-width: 700px;
     margin: 0 auto;
     padding: 24px 16px;
 }
@@ -239,7 +316,14 @@ body {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.add-form input[type="date"] {
+.datetime-inputs {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 1;
+}
+
+.add-form input[type="date"],
+.add-form input[type="time"] {
     padding: 12px 12px;
     font-size: 14px;
     font-family: inherit;
@@ -251,8 +335,18 @@ body {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.add-form input[type="date"] {
+    min-width: 130px;
+}
+
+.add-form input[type="time"] {
+    width: 100px;
+    min-width: 90px;
+}
+
 .add-form input[type="text"]:focus,
-.add-form input[type="date"]:focus {
+.add-form input[type="date"]:focus,
+.add-form input[type="time"]:focus {
     outline: none;
     border-color: var(--sp-cyan);
     box-shadow: 0 0 0 3px rgba(32, 153, 213, 0.15);
@@ -288,22 +382,160 @@ body {
     list-style: none;
 }
 
+/* Todo Item Container */
+.todo-item-container {
+    border-bottom: 1px solid var(--border);
+}
+
+.todo-item-container:last-child {
+    border-bottom: none;
+}
+
 .todo-item {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 16px;
-    border-bottom: 1px solid var(--border);
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
-.todo-item:last-child {
-    border-bottom: none;
-}
-
 .todo-item:hover {
     background: var(--sp-very-light-cyan);
+}
+
+/* Expand Button */
+.expand-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.expand-btn:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+.expand-btn svg {
+    transition: transform 0.2s;
+}
+
+.expand-btn.rotated svg {
+    transform: rotate(180deg);
+}
+
+/* Has Details Indicator */
+.has-details-indicator {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--sp-cyan);
+    border-radius: 50%;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* Detail Panel */
+.todo-detail-panel {
+    max-height: 0;
+    overflow: hidden;
+    background: var(--sp-very-light-cyan);
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.todo-item-container.expanded .todo-detail-panel {
+    max-height: 500px;
+    padding: 16px 16px 16px 52px;
+}
+
+.detail-field {
+    margin-bottom: 16px;
+}
+
+.detail-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.description-input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    color: var(--text);
+    resize: vertical;
+    min-height: 60px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.description-input:focus {
+    outline: none;
+    border-color: var(--sp-cyan);
+    box-shadow: 0 0 0 3px rgba(32, 153, 213, 0.15);
+}
+
+.description-input::placeholder {
+    color: var(--muted);
+}
+
+/* Notes Editor Container */
+.notes-editor-container {
+    background: var(--card);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.notes-editor {
+    min-height: 120px;
+}
+
+/* Detail Actions */
+.detail-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.save-details-btn {
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #fff;
+    background: var(--sp-cyan);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.save-details-btn:hover {
+    background: var(--sp-dark-cyan);
+}
+
+.save-details-btn:active {
+    transform: scale(0.98);
+}
+
+.save-details-btn.saved {
+    background: var(--success);
 }
 
 .checkbox {
@@ -406,7 +638,7 @@ body {
 }
 
 /* Responsive Design */
-@media (max-width: 600px) {
+@media (max-width: 700px) {
     .container {
         padding: 16px 12px;
     }
@@ -429,14 +661,41 @@ body {
         width: 100%;
     }
     
-    .add-form input[type="date"],
-    .add-form button {
+    .datetime-inputs {
         flex: 1;
         min-width: 0;
+    }
+    
+    .datetime-inputs input[type="date"] {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .add-form input[type="time"] {
+        width: 90px;
+    }
+    
+    .add-form button {
+        flex: none;
+        width: 100%;
     }
     
     /* Always show delete button on touch devices */
     .delete-btn {
         opacity: 1;
+    }
+    
+    /* Adjust detail panel padding on mobile */
+    .todo-item-container.expanded .todo-detail-panel {
+        padding: 16px;
+    }
+    
+    /* Quill toolbar adjustments for mobile */
+    .ql-toolbar.ql-snow {
+        padding: 4px;
+    }
+    
+    .ql-toolbar.ql-snow .ql-formats {
+        margin-right: 8px;
     }
 }
