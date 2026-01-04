@@ -147,6 +147,16 @@
             return fetch(url, { ...options, headers });
         }
 
+        // Safely sanitize HTML content (falls back to raw content if DOMPurify unavailable)
+        // Backend already sanitizes with bleach, so this is defense-in-depth
+        function sanitizeHtml(html) {
+            if (typeof DOMPurify !== 'undefined') {
+                return DOMPurify.sanitize(html);
+            }
+            // Fallback: backend already sanitized with bleach
+            return html;
+        }
+
         const form = document.getElementById('todo-form');
         const input = document.getElementById('todo-input');
         const deadlineDateInput = document.getElementById('deadline-date-input');
@@ -334,10 +344,6 @@
         // Load all todos from the API
         async function loadTodos() {
             try {
-                // Clear Quill instances before reloading
-                descriptionQuillInstances.clear();
-                notesQuillInstances.clear();
-                
                 const includeArchived = showArchivedToggle.checked;
                 const url = includeArchived ? '/api/todos?include_archived=true' : '/api/todos';
                 const response = await fetch(url);
@@ -351,6 +357,10 @@
         // Render todos to the page
         function renderTodos(todos) {
             todoList.innerHTML = '';
+            
+            // Clear Quill instances AFTER the DOM elements they reference are destroyed
+            descriptionQuillInstances.clear();
+            notesQuillInstances.clear();
 
             if (todos.length === 0) {
                 emptyState.style.display = 'block';
@@ -517,9 +527,10 @@
                 }
                 
                 // Initialize Description Quill editor if not already done
-                if (!descriptionQuillInstances.has(todo.id)) {
+                const descEditor = container.querySelector('.description-editor');
+                // Check both Map and DOM to prevent duplicate initialization
+                if (!descriptionQuillInstances.has(todo.id) && !descEditor.classList.contains('ql-container')) {
                     try {
-                        const descEditor = container.querySelector('.description-editor');
                         const descQuill = new Quill(descEditor, {
                             theme: 'snow',
                             placeholder: 'Add a description...',
@@ -527,9 +538,8 @@
                         });
                         
                         // Set initial content (sanitized for XSS protection)
-                        const descContent = detailPanel.dataset.description;
-                        if (descContent) {
-                            descQuill.root.innerHTML = DOMPurify.sanitize(descContent);
+                        if (todo.description) {
+                            descQuill.root.innerHTML = sanitizeHtml(todo.description);
                         }
                         
                         descriptionQuillInstances.set(todo.id, descQuill);
@@ -539,9 +549,10 @@
                 }
                 
                 // Initialize Notes Quill editor if not already done
-                if (!notesQuillInstances.has(todo.id)) {
+                const notesEditor = container.querySelector('.notes-editor');
+                // Check both Map and DOM to prevent duplicate initialization
+                if (!notesQuillInstances.has(todo.id) && !notesEditor.classList.contains('ql-container')) {
                     try {
-                        const notesEditor = container.querySelector('.notes-editor');
                         const notesQuill = new Quill(notesEditor, {
                             theme: 'snow',
                             placeholder: 'Add notes with rich formatting...',
@@ -549,9 +560,8 @@
                         });
                         
                         // Set initial content (sanitized for XSS protection)
-                        const notesContent = detailPanel.dataset.notes;
-                        if (notesContent) {
-                            notesQuill.root.innerHTML = DOMPurify.sanitize(notesContent);
+                        if (todo.notes) {
+                            notesQuill.root.innerHTML = sanitizeHtml(todo.notes);
                         }
                         
                         notesQuillInstances.set(todo.id, notesQuill);

@@ -7,109 +7,205 @@
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
+        /* Light mode defaults */
+        :root {
+            --auth-bg: #f8fafc;
+            --auth-card-bg: #ffffff;
+            --auth-text: #0f172a;
+            --auth-text-muted: #64748b;
+            --auth-border: #cbd5e1;
+            --auth-input-bg: #ffffff;
+            --auth-accent: #2099D5;
+            --auth-accent-hover: #176F9B;
+        }
+
+        /* Dark mode overrides */
+        body.dark {
+            --auth-bg: #0f172a;
+            --auth-card-bg: #1e293b;
+            --auth-text: #f1f5f9;
+            --auth-text-muted: #94a3b8;
+            --auth-border: #475569;
+            --auth-input-bg: #334155;
+            --auth-accent: #2099D5;
+            --auth-accent-hover: #5cb8e4;
+        }
+
+        body {
+            background: var(--auth-bg);
+            transition: background 0.3s ease;
+        }
+
         .auth-container {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 1rem;
+            position: relative;
         }
+
+        .dark-mode-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1px solid var(--auth-border);
+            background: var(--auth-card-bg);
+            color: var(--auth-text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .dark-mode-toggle:hover {
+            background: var(--auth-accent);
+            color: white;
+            border-color: var(--auth-accent);
+        }
+
+        .dark-mode-toggle svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .sun-icon { display: none; }
+        .moon-icon { display: block; }
+        body.dark .sun-icon { display: block; }
+        body.dark .moon-icon { display: none; }
+
         .auth-card {
-            background: var(--card-bg);
+            background: var(--auth-card-bg);
             border-radius: 12px;
             padding: 2rem;
             width: 100%;
             max-width: 400px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--auth-border);
         }
+
         .auth-title {
-            font-size: 1.75rem;
+            font-size: 1.5rem;
             font-weight: 700;
             margin-bottom: 1.5rem;
             text-align: center;
-            color: var(--text-color);
+            color: var(--auth-text);
         }
+
         .auth-form {
             display: flex;
             flex-direction: column;
             gap: 1rem;
         }
+
         .form-group {
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
         }
+
         .form-group label {
             font-weight: 600;
-            color: var(--text-color);
+            color: var(--auth-text);
         }
+
         .form-group input {
-            padding: 0.75rem;
-            border: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--auth-border);
             border-radius: 8px;
             font-size: 1rem;
-            background: var(--input-bg);
-            color: var(--text-color);
+            background: var(--auth-input-bg);
+            color: var(--auth-text);
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
+
+        .form-group input::placeholder {
+            color: var(--auth-text-muted);
+        }
+
         .form-group input:focus {
             outline: none;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+            border-color: var(--auth-accent);
+            box-shadow: 0 0 0 3px rgba(32, 153, 213, 0.2);
         }
+
         .form-hint {
             font-size: 0.875rem;
-            color: var(--text-muted);
+            color: var(--auth-text-muted);
         }
+
         .auth-btn {
-            padding: 0.75rem;
-            background: var(--accent-color);
+            padding: 0.875rem 1.5rem;
+            background: var(--auth-accent);
             color: white;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(32, 153, 213, 0.3);
+            margin-top: 0.5rem;
         }
+
         .auth-btn:hover {
-            background: var(--accent-hover);
+            background: var(--auth-accent-hover);
+            box-shadow: 0 4px 12px rgba(32, 153, 213, 0.4);
         }
+
+        .auth-btn:active {
+            transform: scale(0.98);
+        }
+
         .auth-link {
             text-align: center;
-            margin-top: 1rem;
-            color: var(--text-muted);
+            margin-top: 1.25rem;
+            color: var(--auth-text-muted);
         }
+
         .auth-link a {
-            color: var(--accent-color);
+            color: var(--auth-accent);
             text-decoration: none;
             font-weight: 600;
         }
+
         .auth-link a:hover {
             text-decoration: underline;
         }
+
         .flash-messages {
             margin-bottom: 1rem;
         }
+
         .flash-message {
             padding: 0.75rem;
             border-radius: 8px;
             margin-bottom: 0.5rem;
         }
+
         .flash-error {
             background: #fee2e2;
             color: #991b1b;
             border: 1px solid #fecaca;
         }
+
         .flash-success {
             background: #d1fae5;
             color: #065f46;
             border: 1px solid #a7f3d0;
         }
+
         body.dark .flash-error {
             background: #450a0a;
             color: #fca5a5;
             border-color: #7f1d1d;
         }
+
         body.dark .flash-success {
             background: #052e16;
             color: #86efac;
@@ -119,8 +215,16 @@
 </head>
 <body>
     <div class="auth-container">
+        <button class="dark-mode-toggle" id="darkModeToggle" aria-label="Toggle dark mode">
+            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+        </button>
         <div class="auth-card">
-            <h1 class="auth-title">Create Account</h1>
+            <h1 class="auth-title">To-Do List Registration</h1>
             
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
@@ -158,10 +262,16 @@
     </div>
     
     <script nonce="{{ csp_nonce() }}">
-        // Load dark mode preference
+        // Load dark mode preference (default to light mode)
         if (localStorage.getItem('darkMode') === 'true') {
             document.body.classList.add('dark');
         }
+
+        // Dark mode toggle functionality
+        document.getElementById('darkModeToggle').addEventListener('click', function() {
+            document.body.classList.toggle('dark');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+        });
     </script>
 </body>
 </html>

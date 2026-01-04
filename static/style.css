@@ -309,8 +309,6 @@ body.dark .flash-info {
 
 /* Settings Button */
 .settings-btn {
-    position: absolute;
-    right: 0;
     width: 36px;
     height: 36px;
     display: flex;
