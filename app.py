@@ -525,18 +525,38 @@ def delete_todo(todo_id):
     cursor = conn.cursor()
     placeholder = '%s' if is_postgres else '?'
     
-    # Verify todo belongs to current user
-    cursor.execute(f'SELECT id FROM todos WHERE id = {placeholder} AND user_id = {placeholder}', (todo_id, current_user.id))
-    if not cursor.fetchone():
+    try:
+        # Verify todo belongs to current user and get google_event_id in same query
+        cursor.execute(
+            f'SELECT id, google_event_id FROM todos WHERE id = {placeholder} AND user_id = {placeholder}',
+            (todo_id, current_user.id)
+        )
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Todo not found'}), 404
+        
+        google_event_id = row[1]
+        
+        # Delete from database first
+        cursor.execute(
+            f'DELETE FROM todos WHERE id = {placeholder} AND user_id = {placeholder}',
+            (todo_id, current_user.id)
+        )
+        conn.commit()
+    finally:
         conn.close()
-        return jsonify({'error': 'Todo not found'}), 404
     
-    # Delete associated Google Calendar event first
-    delete_todo_calendar_event(todo_id)
-    
-    cursor.execute(f'DELETE FROM todos WHERE id = {placeholder} AND user_id = {placeholder}', (todo_id, current_user.id))
-    conn.commit()
-    conn.close()
+    # Delete associated Google Calendar event after DB connection is closed
+    # This prevents nested connection issues in PostgreSQL
+    if google_event_id:
+        try:
+            credentials = get_google_credentials()
+            if credentials:
+                gcal.delete_calendar_event(credentials, google_event_id)
+        except Exception as e:
+            # Calendar deletion is non-critical; log and continue
+            logger.warning(f"Failed to delete calendar event {google_event_id}: {e}")
     
     return jsonify({'success': True})
 
@@ -747,13 +767,15 @@ def sync_todo_to_calendar(todo_id, text, deadline, description=None):
         return None
     
     conn, is_postgres = get_db()
-    cursor = conn.cursor()
-    placeholder = '%s' if is_postgres else '?'
-    
-    # Check if todo already has a calendar event
-    cursor.execute(f'SELECT google_event_id FROM todos WHERE id = {placeholder}', (todo_id,))
-    row = cursor.fetchone()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        placeholder = '%s' if is_postgres else '?'
+        
+        # Check if todo already has a calendar event
+        cursor.execute(f'SELECT google_event_id FROM todos WHERE id = {placeholder}', (todo_id,))
+        row = cursor.fetchone()
+    finally:
+        conn.close()
     
     if not row:
         return None
@@ -782,11 +804,13 @@ def sync_todo_to_calendar(todo_id, text, deadline, description=None):
         if event_id:
             # Store event ID in database
             conn, is_postgres = get_db()
-            cursor = conn.cursor()
-            placeholder = '%s' if is_postgres else '?'
-            cursor.execute(f'UPDATE todos SET google_event_id = {placeholder} WHERE id = {placeholder}', (event_id, todo_id))
-            conn.commit()
-            conn.close()
+            try:
+                cursor = conn.cursor()
+                placeholder = '%s' if is_postgres else '?'
+                cursor.execute(f'UPDATE todos SET google_event_id = {placeholder} WHERE id = {placeholder}', (event_id, todo_id))
+                conn.commit()
+            finally:
+                conn.close()
         
         return event_id
 
@@ -798,12 +822,14 @@ def delete_todo_calendar_event(todo_id):
         return False
     
     conn, is_postgres = get_db()
-    cursor = conn.cursor()
-    placeholder = '%s' if is_postgres else '?'
-    
-    cursor.execute(f'SELECT google_event_id FROM todos WHERE id = {placeholder}', (todo_id,))
-    row = cursor.fetchone()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        placeholder = '%s' if is_postgres else '?'
+        
+        cursor.execute(f'SELECT google_event_id FROM todos WHERE id = {placeholder}', (todo_id,))
+        row = cursor.fetchone()
+    finally:
+        conn.close()
     
     if not row or not row[0]:
         return False
