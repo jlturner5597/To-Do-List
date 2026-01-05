@@ -232,6 +232,11 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        # Commit table creations before ALTER statements
+        # (ALTER failures cause rollback which would undo CREATE TABLE)
+        conn.commit()
+        
         # Add new columns if they don't exist (for existing PostgreSQL databases)
         try:
             cursor.execute('ALTER TABLE todos ADD COLUMN description TEXT')
