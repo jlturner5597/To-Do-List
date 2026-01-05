@@ -16,7 +16,7 @@
         {% if messages %}
             <div class="flash-container">
                 {% for category, message in messages %}
-                    <div class="flash-message flash-{{ category }}" onclick="this.remove()">
+                    <div class="flash-message flash-{{ category }}">
                         {{ message }}
                         <span class="flash-close">&times;</span>
                     </div>
@@ -183,6 +183,11 @@
             loadShowArchivedPreference();
             loadGoogleCalendarStatus();
             loadTodos();
+            
+            // Flash message dismiss handlers (CSP-compliant)
+            document.querySelectorAll('.flash-message').forEach(msg => {
+                msg.addEventListener('click', () => msg.remove());
+            });
         });
 
         // Toggle settings panel
@@ -290,6 +295,15 @@
             return `${dateStr}T00:00:00`;
         }
 
+        // Get user's timezone
+        function getUserTimezone() {
+            try {
+                return Intl.DateTimeFormat().resolvedOptions().timeZone;
+            } catch (e) {
+                return 'UTC';
+            }
+        }
+
         // Handle form submission
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -297,12 +311,13 @@
             if (!text) return;
 
             const deadline = combineDateTime(deadlineDateInput.value, deadlineTimeInput.value);
+            const timezone = deadline ? getUserTimezone() : null;
 
             try {
                 const response = await secureFetch('/api/todos', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text, deadline })
+                    body: JSON.stringify({ text, deadline, timezone })
                 });
 
                 if (response.ok) {

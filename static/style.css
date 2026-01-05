@@ -570,8 +570,8 @@ body.dark .flash-info {
 }
 
 .add-form input[type="time"] {
-    width: 100px;
-    min-width: 90px;
+    width: 125px;
+    min-width: 115px;
 }
 
 .add-form input[type="text"]:focus,
@@ -965,7 +965,7 @@ body.dark .editor-error {
     }
     
     .add-form input[type="time"] {
-        width: 90px;
+        width: 115px;
     }
     
     .add-form button {

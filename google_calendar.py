@@ -117,16 +117,18 @@ def get_calendar_service(credentials):
     return build('calendar', 'v3', credentials=credentials)
 
 
-def create_calendar_event(credentials, title, start_datetime, description=None, duration_minutes=60):
+def create_calendar_event(credentials, title, start_datetime, description=None, duration_minutes=60, is_all_day=False, timezone='UTC'):
     """
     Create a new event on the user's primary Google Calendar.
     
     Args:
         credentials: Google OAuth credentials
         title: Event title
-        start_datetime: Start time as ISO string or datetime object
+        start_datetime: Start time as ISO string or datetime object (or date string for all-day events)
         description: Optional event description
-        duration_minutes: Event duration in minutes (default 60)
+        duration_minutes: Event duration in minutes (default 60, ignored for all-day events)
+        is_all_day: If True, creates an all-day event using just the date
+        timezone: User's timezone (e.g., 'America/New_York') for timed events
     
     Returns:
         Created event ID or None on failure
@@ -134,25 +136,49 @@ def create_calendar_event(credentials, title, start_datetime, description=None, 
     try:
         service = get_calendar_service(credentials)
         
-        # Parse start datetime
-        if isinstance(start_datetime, str):
-            start = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
+        if is_all_day:
+            # All-day event: use 'date' instead of 'dateTime'
+            if isinstance(start_datetime, str):
+                # Extract just the date portion (YYYY-MM-DD)
+                date_str = start_datetime.split('T')[0]
+            else:
+                date_str = start_datetime.strftime('%Y-%m-%d')
+            
+            event = {
+                'summary': title,
+                'start': {
+                    'date': date_str,
+                },
+                'end': {
+                    'date': date_str,
+                },
+            }
         else:
-            start = start_datetime
-        
-        end = start + timedelta(minutes=duration_minutes)
-        
-        event = {
-            'summary': title,
-            'start': {
-                'dateTime': start.isoformat(),
-                'timeZone': 'UTC',
-            },
-            'end': {
-                'dateTime': end.isoformat(),
-                'timeZone': 'UTC',
-            },
-        }
+            # Timed event - use the datetime string directly with the user's timezone
+            if isinstance(start_datetime, str):
+                # Remove any timezone info from the ISO string to treat it as local time
+                start_str = start_datetime.replace('Z', '').split('+')[0]
+                start = datetime.fromisoformat(start_str)
+            else:
+                start = start_datetime
+            
+            end = start + timedelta(minutes=duration_minutes)
+            
+            # Format as datetime string without timezone offset (let timeZone field handle it)
+            start_formatted = start.strftime('%Y-%m-%dT%H:%M:%S')
+            end_formatted = end.strftime('%Y-%m-%dT%H:%M:%S')
+            
+            event = {
+                'summary': title,
+                'start': {
+                    'dateTime': start_formatted,
+                    'timeZone': timezone,
+                },
+                'end': {
+                    'dateTime': end_formatted,
+                    'timeZone': timezone,
+                },
+            }
         
         if description:
             event['description'] = description
@@ -168,7 +194,7 @@ def create_calendar_event(credentials, title, start_datetime, description=None, 
         return None
 
 
-def update_calendar_event(credentials, event_id, title=None, start_datetime=None, description=None, duration_minutes=60):
+def update_calendar_event(credentials, event_id, title=None, start_datetime=None, description=None, duration_minutes=60, is_all_day=False, timezone='UTC'):
     """
     Update an existing event on Google Calendar.
     
@@ -179,6 +205,8 @@ def update_calendar_event(credentials, event_id, title=None, start_datetime=None
         start_datetime: New start time (optional)
         description: New description (optional)
         duration_minutes: Event duration in minutes
+        is_all_day: If True, updates to an all-day event using just the date
+        timezone: User's timezone (e.g., 'America/New_York') for timed events
     
     Returns:
         True on success, False on failure
@@ -193,21 +221,41 @@ def update_calendar_event(credentials, event_id, title=None, start_datetime=None
             event['summary'] = title
         
         if start_datetime:
-            if isinstance(start_datetime, str):
-                start = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
+            if is_all_day:
+                # All-day event: use 'date' instead of 'dateTime'
+                if isinstance(start_datetime, str):
+                    date_str = start_datetime.split('T')[0]
+                else:
+                    date_str = start_datetime.strftime('%Y-%m-%d')
+                
+                event['start'] = {
+                    'date': date_str,
+                }
+                event['end'] = {
+                    'date': date_str,
+                }
             else:
-                start = start_datetime
-            
-            end = start + timedelta(minutes=duration_minutes)
-            
-            event['start'] = {
-                'dateTime': start.isoformat(),
-                'timeZone': 'UTC',
-            }
-            event['end'] = {
-                'dateTime': end.isoformat(),
-                'timeZone': 'UTC',
-            }
+                # Timed event - use the datetime string directly with the user's timezone
+                if isinstance(start_datetime, str):
+                    start_str = start_datetime.replace('Z', '').split('+')[0]
+                    start = datetime.fromisoformat(start_str)
+                else:
+                    start = start_datetime
+                
+                end = start + timedelta(minutes=duration_minutes)
+                
+                # Format as datetime string without timezone offset
+                start_formatted = start.strftime('%Y-%m-%dT%H:%M:%S')
+                end_formatted = end.strftime('%Y-%m-%dT%H:%M:%S')
+                
+                event['start'] = {
+                    'dateTime': start_formatted,
+                    'timeZone': timezone,
+                }
+                event['end'] = {
+                    'dateTime': end_formatted,
+                    'timeZone': timezone,
+                }
         
         if description is not None:
             event['description'] = description

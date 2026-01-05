@@ -373,6 +373,7 @@ def add_todo():
     data = request.get_json()
     text = data.get('text', '').strip()
     deadline = data.get('deadline') or None  # Optional deadline (ISO timestamp)
+    timezone = data.get('timezone') or 'UTC'  # User's timezone for calendar events
     # Sanitize HTML in description and notes to prevent XSS
     description_raw = data.get('description', '').strip() or None
     description = sanitize_html(description_raw) if description_raw else None
@@ -408,7 +409,7 @@ def add_todo():
     # Sync to Google Calendar if deadline is set (non-critical)
     if deadline:
         try:
-            sync_todo_to_calendar(todo['id'], text, deadline, description)
+            sync_todo_to_calendar(todo['id'], text, deadline, description, timezone)
         except Exception as e:
             logger.warning(f"Failed to sync todo to calendar: {e}")
     
@@ -784,7 +785,7 @@ def google_disconnect():
 # Google Calendar Sync Helpers
 # ============================================================================
 
-def sync_todo_to_calendar(todo_id, text, deadline, description=None):
+def sync_todo_to_calendar(todo_id, text, deadline, description=None, timezone='UTC'):
     """Create or update a calendar event for a todo."""
     if not deadline:
         return None
@@ -809,23 +810,50 @@ def sync_todo_to_calendar(todo_id, text, deadline, description=None):
     
     existing_event_id = row[0]
     
+    # Determine if deadline has a specific time or is date-only
+    # Date-only deadlines end with T00:00:00 (midnight)
+    from datetime import datetime, timedelta
+    
+    is_all_day = False
+    event_title = text
+    event_start = deadline
+    
+    if isinstance(deadline, str):
+        # Check if time is midnight (date-only)
+        if 'T00:00:00' in deadline or 'T00:00' in deadline:
+            # Date-only: create all-day event
+            is_all_day = True
+        else:
+            # Has specific time: create reminder 1 hour before
+            deadline_dt = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+            reminder_start = deadline_dt - timedelta(hours=1)
+            event_start = reminder_start.isoformat()
+            
+            # Format the time for the title (e.g., "8:00 PM")
+            time_str = deadline_dt.strftime('%I:%M %p').lstrip('0')
+            event_title = f"REMINDER: {text} @ {time_str}"
+    
     if existing_event_id:
         # Update existing event
         success = gcal.update_calendar_event(
             credentials,
             existing_event_id,
-            title=text,
-            start_datetime=deadline,
-            description=description
+            title=event_title,
+            start_datetime=event_start,
+            description=description,
+            is_all_day=is_all_day,
+            timezone=timezone
         )
         return existing_event_id if success else None
     else:
         # Create new event
         event_id = gcal.create_calendar_event(
             credentials,
-            title=text,
-            start_datetime=deadline,
-            description=description
+            title=event_title,
+            start_datetime=event_start,
+            description=description,
+            is_all_day=is_all_day,
+            timezone=timezone
         )
         
         if event_id:
