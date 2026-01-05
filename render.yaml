@@ -14,3 +14,9 @@ services:
         fromDatabase:
           name: todo-db
           property: connectionString
+      - key: GOOGLE_CLIENT_ID
+        sync: false  # Set this in Render dashboard
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false  # Set this in Render dashboard
+      - key: GOOGLE_REDIRECT_URI
+        value: https://todo-list.onrender.com/api/google/callback  # Update with your actual domain

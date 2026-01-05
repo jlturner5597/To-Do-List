@@ -4,6 +4,11 @@ Flask backend with PostgreSQL database
 """
 
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file for local development
+load_dotenv()
+
 import logging
 from flask import Flask, render_template, request, jsonify, redirect, session, flash
 from datetime import datetime
