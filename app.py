@@ -123,7 +123,7 @@ csp = {
         'https://fonts.gstatic.com',
     ],
     'img-src': ["'self'", 'data:'],
-    'connect-src': "'self'",
+    'connect-src': ["'self'", 'https://cdn.quilljs.com'],
 }
 
 talisman = Talisman(
