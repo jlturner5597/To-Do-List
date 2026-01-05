@@ -332,25 +332,27 @@ def row_to_dict(row, columns):
 def get_todos():
     """Get all to-do items for the current user. Use ?include_archived=true to include archived tasks."""
     conn, is_postgres = get_db()
-    cursor = conn.cursor()
-    columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'archived', 'created_at']
-    placeholder = '%s' if is_postgres else '?'
-    
-    include_archived = request.args.get('include_archived', 'false').lower() == 'true'
-    
-    if include_archived:
-        cursor.execute(
-            f'SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE user_id = {placeholder} ORDER BY created_at DESC',
-            (current_user.id,)
-        )
-    else:
-        cursor.execute(
-            f'SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE user_id = {placeholder} AND archived = {placeholder} ORDER BY created_at DESC',
-            (current_user.id, False)
-        )
-    
-    todos = [row_to_dict(row, columns) for row in cursor.fetchall()]
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'archived', 'created_at']
+        placeholder = '%s' if is_postgres else '?'
+        
+        include_archived = request.args.get('include_archived', 'false').lower() == 'true'
+        
+        if include_archived:
+            cursor.execute(
+                f'SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE user_id = {placeholder} ORDER BY created_at DESC',
+                (current_user.id,)
+            )
+        else:
+            cursor.execute(
+                f'SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE user_id = {placeholder} AND archived = {placeholder} ORDER BY created_at DESC',
+                (current_user.id, False)
+            )
+        
+        todos = [row_to_dict(row, columns) for row in cursor.fetchall()]
+    finally:
+        conn.close()
     return jsonify(todos)
 
 
@@ -373,23 +375,25 @@ def add_todo():
         return jsonify({'error': error}), 400
     
     conn, is_postgres = get_db()
-    cursor = conn.cursor()
-    columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'archived', 'created_at']
-    
-    if is_postgres:
-        cursor.execute(
-            'INSERT INTO todos (text, deadline, description, notes, user_id) VALUES (%s, %s, %s, %s, %s) RETURNING id, text, completed, deadline, description, notes, archived, created_at',
-            (text, deadline, description, notes, current_user.id)
-        )
-        todo = row_to_dict(cursor.fetchone(), columns)
-    else:
-        cursor.execute('INSERT INTO todos (text, deadline, description, notes, user_id) VALUES (?, ?, ?, ?, ?)', (text, deadline, description, notes, current_user.id))
-        todo_id = cursor.lastrowid
-        cursor.execute('SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE id = ?', (todo_id,))
-        todo = row_to_dict(cursor.fetchone(), columns)
-    
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'archived', 'created_at']
+        
+        if is_postgres:
+            cursor.execute(
+                'INSERT INTO todos (text, deadline, description, notes, user_id) VALUES (%s, %s, %s, %s, %s) RETURNING id, text, completed, deadline, description, notes, archived, created_at',
+                (text, deadline, description, notes, current_user.id)
+            )
+            todo = row_to_dict(cursor.fetchone(), columns)
+        else:
+            cursor.execute('INSERT INTO todos (text, deadline, description, notes, user_id) VALUES (?, ?, ?, ?, ?)', (text, deadline, description, notes, current_user.id))
+            todo_id = cursor.lastrowid
+            cursor.execute('SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE id = ?', (todo_id,))
+            todo = row_to_dict(cursor.fetchone(), columns)
+        
+        conn.commit()
+    finally:
+        conn.close()
     
     # Sync to Google Calendar if deadline is set
     if deadline:
@@ -403,26 +407,27 @@ def add_todo():
 def toggle_todo(todo_id):
     """Toggle the completion status of a to-do item."""
     conn, is_postgres = get_db()
-    cursor = conn.cursor()
-    columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'archived', 'created_at']
-    placeholder = '%s' if is_postgres else '?'
-    
-    # Verify todo belongs to current user
-    cursor.execute(f'SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE id = {placeholder} AND user_id = {placeholder}', (todo_id, current_user.id))
-    row = cursor.fetchone()
-    if not row:
+    try:
+        cursor = conn.cursor()
+        columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'archived', 'created_at']
+        placeholder = '%s' if is_postgres else '?'
+        
+        # Verify todo belongs to current user
+        cursor.execute(f'SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE id = {placeholder} AND user_id = {placeholder}', (todo_id, current_user.id))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({'error': 'Todo not found'}), 404
+        
+        todo = row_to_dict(row, columns)
+        new_status = not todo['completed']
+        
+        cursor.execute(f'UPDATE todos SET completed = {placeholder} WHERE id = {placeholder} AND user_id = {placeholder}', (new_status, todo_id, current_user.id))
+        conn.commit()
+        
+        cursor.execute(f'SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE id = {placeholder}', (todo_id,))
+        updated_todo = row_to_dict(cursor.fetchone(), columns)
+    finally:
         conn.close()
-        return jsonify({'error': 'Todo not found'}), 404
-    
-    todo = row_to_dict(row, columns)
-    new_status = not todo['completed']
-    
-    cursor.execute(f'UPDATE todos SET completed = {placeholder} WHERE id = {placeholder} AND user_id = {placeholder}', (new_status, todo_id, current_user.id))
-    conn.commit()
-    
-    cursor.execute(f'SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE id = {placeholder}', (todo_id,))
-    updated_todo = row_to_dict(cursor.fetchone(), columns)
-    conn.close()
     
     return jsonify(updated_todo)
 
@@ -449,56 +454,56 @@ def update_todo(todo_id):
         return jsonify({'error': error}), 400
     
     conn, is_postgres = get_db()
-    cursor = conn.cursor()
-    columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'archived', 'created_at']
-    placeholder = '%s' if is_postgres else '?'
-    
-    # Check if todo exists and belongs to current user
-    cursor.execute(f'SELECT id FROM todos WHERE id = {placeholder} AND user_id = {placeholder}', (todo_id, current_user.id))
-    if not cursor.fetchone():
+    try:
+        cursor = conn.cursor()
+        columns = ['id', 'text', 'completed', 'deadline', 'description', 'notes', 'archived', 'created_at']
+        placeholder = '%s' if is_postgres else '?'
+        
+        # Check if todo exists and belongs to current user
+        cursor.execute(f'SELECT id FROM todos WHERE id = {placeholder} AND user_id = {placeholder}', (todo_id, current_user.id))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Todo not found'}), 404
+        
+        # Build dynamic update query based on provided fields
+        update_fields = []
+        values = []
+        
+        if 'description' in data:
+            update_fields.append(f'description = {placeholder}')
+            # Sanitize HTML in description to prevent XSS
+            desc_value = sanitize_html(data['description']) if data['description'] else None
+            values.append(desc_value)
+        
+        if 'notes' in data:
+            update_fields.append(f'notes = {placeholder}')
+            # Sanitize HTML in notes to prevent XSS
+            notes_value = sanitize_html(data['notes']) if data['notes'] else None
+            values.append(notes_value)
+        
+        if 'deadline' in data:
+            update_fields.append(f'deadline = {placeholder}')
+            values.append(data['deadline'] or None)
+        
+        if 'text' in data:
+            update_fields.append(f'text = {placeholder}')
+            values.append(data['text'].strip())
+        
+        if 'archived' in data:
+            update_fields.append(f'archived = {placeholder}')
+            values.append(bool(data['archived']))
+        
+        if not update_fields:
+            return jsonify({'error': 'No fields to update'}), 400
+        
+        values.append(todo_id)
+        query = f"UPDATE todos SET {', '.join(update_fields)} WHERE id = {placeholder}"
+        cursor.execute(query, tuple(values))
+        conn.commit()
+        
+        cursor.execute(f'SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE id = {placeholder}', (todo_id,))
+        updated_todo = row_to_dict(cursor.fetchone(), columns)
+    finally:
         conn.close()
-        return jsonify({'error': 'Todo not found'}), 404
-    
-    # Build dynamic update query based on provided fields
-    update_fields = []
-    values = []
-    
-    if 'description' in data:
-        update_fields.append(f'description = {placeholder}')
-        # Sanitize HTML in description to prevent XSS
-        desc_value = sanitize_html(data['description']) if data['description'] else None
-        values.append(desc_value)
-    
-    if 'notes' in data:
-        update_fields.append(f'notes = {placeholder}')
-        # Sanitize HTML in notes to prevent XSS
-        notes_value = sanitize_html(data['notes']) if data['notes'] else None
-        values.append(notes_value)
-    
-    if 'deadline' in data:
-        update_fields.append(f'deadline = {placeholder}')
-        values.append(data['deadline'] or None)
-    
-    if 'text' in data:
-        update_fields.append(f'text = {placeholder}')
-        values.append(data['text'].strip())
-    
-    if 'archived' in data:
-        update_fields.append(f'archived = {placeholder}')
-        values.append(bool(data['archived']))
-    
-    if not update_fields:
-        conn.close()
-        return jsonify({'error': 'No fields to update'}), 400
-    
-    values.append(todo_id)
-    query = f"UPDATE todos SET {', '.join(update_fields)} WHERE id = {placeholder}"
-    cursor.execute(query, tuple(values))
-    conn.commit()
-    
-    cursor.execute(f'SELECT id, text, completed, deadline, description, notes, archived, created_at FROM todos WHERE id = {placeholder}', (todo_id,))
-    updated_todo = row_to_dict(cursor.fetchone(), columns)
-    conn.close()
     
     # Sync to Google Calendar if deadline, text, or description changed
     if 'deadline' in data or 'text' in data or 'description' in data:
