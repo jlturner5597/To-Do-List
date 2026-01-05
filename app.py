@@ -395,9 +395,12 @@ def add_todo():
     finally:
         conn.close()
     
-    # Sync to Google Calendar if deadline is set
+    # Sync to Google Calendar if deadline is set (non-critical)
     if deadline:
-        sync_todo_to_calendar(todo['id'], text, deadline, description)
+        try:
+            sync_todo_to_calendar(todo['id'], text, deadline, description)
+        except Exception as e:
+            logger.warning(f"Failed to sync todo to calendar: {e}")
     
     return jsonify(todo), 201
 
@@ -505,19 +508,22 @@ def update_todo(todo_id):
     finally:
         conn.close()
     
-    # Sync to Google Calendar if deadline, text, or description changed
+    # Sync to Google Calendar if deadline, text, or description changed (non-critical)
     if 'deadline' in data or 'text' in data or 'description' in data:
-        new_deadline = updated_todo.get('deadline')
-        if new_deadline:
-            sync_todo_to_calendar(
-                todo_id,
-                updated_todo['text'],
-                new_deadline,
-                updated_todo.get('description')
-            )
-        elif 'deadline' in data and data['deadline'] is None:
-            # Deadline was removed, delete the calendar event
-            delete_todo_calendar_event(todo_id)
+        try:
+            new_deadline = updated_todo.get('deadline')
+            if new_deadline:
+                sync_todo_to_calendar(
+                    todo_id,
+                    updated_todo['text'],
+                    new_deadline,
+                    updated_todo.get('description')
+                )
+            elif 'deadline' in data and data['deadline'] is None:
+                # Deadline was removed, delete the calendar event
+                delete_todo_calendar_event(todo_id)
+        except Exception as e:
+            logger.warning(f"Failed to sync todo to calendar: {e}")
     
     return jsonify(updated_todo)
 
@@ -578,14 +584,16 @@ def get_google_tokens(user_id=None):
         return None
     
     conn, is_postgres = get_db()
-    cursor = conn.cursor()
-    placeholder = '%s' if is_postgres else '?'
-    cursor.execute(
-        f'SELECT access_token, refresh_token, token_uri, client_id, client_secret, scopes, expiry FROM google_tokens WHERE user_id = {placeholder} ORDER BY id DESC LIMIT 1',
-        (user_id,)
-    )
-    row = cursor.fetchone()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        placeholder = '%s' if is_postgres else '?'
+        cursor.execute(
+            f'SELECT access_token, refresh_token, token_uri, client_id, client_secret, scopes, expiry FROM google_tokens WHERE user_id = {placeholder} ORDER BY id DESC LIMIT 1',
+            (user_id,)
+        )
+        row = cursor.fetchone()
+    finally:
+        conn.close()
     
     if not row:
         return None
@@ -612,29 +620,31 @@ def save_google_tokens(token_data, user_id=None):
     encrypted_data = crypto_utils.encrypt_token_data(token_data)
     
     conn, is_postgres = get_db()
-    cursor = conn.cursor()
-    placeholder = '%s' if is_postgres else '?'
-    
-    # Clear existing tokens for this user
-    cursor.execute(f'DELETE FROM google_tokens WHERE user_id = {placeholder}', (user_id,))
-    
-    # Insert new encrypted tokens
-    cursor.execute(f'''
-        INSERT INTO google_tokens (access_token, refresh_token, token_uri, client_id, client_secret, scopes, expiry, user_id)
-        VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
-    ''', (
-        encrypted_data['access_token'],
-        encrypted_data.get('refresh_token'),
-        encrypted_data.get('token_uri'),
-        encrypted_data.get('client_id'),
-        encrypted_data.get('client_secret'),
-        encrypted_data.get('scopes'),
-        encrypted_data.get('expiry'),
-        user_id
-    ))
-    
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        placeholder = '%s' if is_postgres else '?'
+        
+        # Clear existing tokens for this user
+        cursor.execute(f'DELETE FROM google_tokens WHERE user_id = {placeholder}', (user_id,))
+        
+        # Insert new encrypted tokens
+        cursor.execute(f'''
+            INSERT INTO google_tokens (access_token, refresh_token, token_uri, client_id, client_secret, scopes, expiry, user_id)
+            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+        ''', (
+            encrypted_data['access_token'],
+            encrypted_data.get('refresh_token'),
+            encrypted_data.get('token_uri'),
+            encrypted_data.get('client_id'),
+            encrypted_data.get('client_secret'),
+            encrypted_data.get('scopes'),
+            encrypted_data.get('expiry'),
+            user_id
+        ))
+        
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def delete_google_tokens(user_id=None):
@@ -645,11 +655,13 @@ def delete_google_tokens(user_id=None):
         return
     
     conn, is_postgres = get_db()
-    cursor = conn.cursor()
-    placeholder = '%s' if is_postgres else '?'
-    cursor.execute(f'DELETE FROM google_tokens WHERE user_id = {placeholder}', (user_id,))
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        placeholder = '%s' if is_postgres else '?'
+        cursor.execute(f'DELETE FROM google_tokens WHERE user_id = {placeholder}', (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def get_google_credentials(user_id=None):
