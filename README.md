@@ -1,52 +1,68 @@
 # To-Do List Application
 
-A simple to-do list app built with Flask and PostgreSQL (SQLite for local development).
+A full-stack to-do list web application built as a technical demonstration for the Sales Engineer interview process.
 
-## Quick Start
+---
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Tech Stack
 
-2. Run the application:
-   ```bash
-   python app.py
-   ```
+| Layer | Technology |
+|-------|------------|
+| **Backend** | Python, Flask |
+| **Database** | PostgreSQL (production), SQLite (local dev) |
+| **Authentication** | Flask-Login, Werkzeug password hashing |
+| **Security** | Flask-Talisman, Flask-Limiter, CSRF protection, XSS sanitization |
+| **Integration** | Google Calendar API (OAuth 2.0) |
+| **Deployment** | Render.com, Gunicorn |
 
-3. Open http://localhost:5000 in your browser
+---
+
+## Features
+
+- **User Authentication** — Register, login, and secure session management
+- **Task Management** — Create, edit, complete, archive, and delete tasks
+- **Rich Text Notes** — Quill.js editor for detailed task descriptions
+- **Deadlines** — Date/time picker with overdue highlighting
+- **Google Calendar Sync** — OAuth integration to sync tasks as calendar events
+- **Security** — Rate limiting, secure headers, encrypted token storage
+
+---
+
+## Quick Start (Local Development)
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python app.py
+
+# Open http://localhost:5000
+```
+
+---
 
 ## Project Structure
 
 ```
-To-Do List/
-├── app.py              # Flask application (main file)
-├── database.db         # SQLite database (auto-created on first run)
+├── app.py              # Main Flask application
+├── auth.py             # User authentication module
+├── crypto_utils.py     # Token encryption utilities
+├── google_calendar.py  # Google Calendar API integration
 ├── requirements.txt    # Python dependencies
+├── render.yaml         # Render deployment configuration
 ├── static/
 │   └── style.css       # Styling
 └── templates/
-    └── index.html      # HTML template
+    ├── index.html      # Main application UI
+    ├── login.html      # Login page
+    └── register.html   # Registration page
 ```
 
-## Features
+---
 
-- Add new to-do items
-- Set optional deadlines via date picker
-- Click checkbox to mark as complete/incomplete
-- Delete items with the × button
-- Overdue items highlighted in red
-- Tasks persist in SQLite database
+## Deployment
 
-## Deployment to Render
+This application is configured for one-click deployment on [Render.com](https://render.com) using the included `render.yaml` Blueprint.
 
-1. Push this repository to GitHub
-2. Go to [render.com](https://render.com) and sign up/log in
-3. Click **New** → **Blueprint**
-4. Connect your GitHub account and select this repository
-5. Render will detect `render.yaml` and configure automatically
-6. Click **Apply** to deploy
-
-Your app will be live at `https://todo-list-xxxx.onrender.com`
-
-> **Note:** The free tier spins down after inactivity. First request after idle may take ~30 seconds. The free PostgreSQL database expires after 90 days.
+> **Note:** Free tier instances spin down after inactivity; first request may take ~30 seconds to wake.
